@@ -16,6 +16,7 @@ public class RouterConfig {
     public RouterFunction<ServerResponse> rutas(PaymentHandler handler){
         return route(GET("/payment"), handler::findAll)
                 .andRoute(GET("/payment/{id}"), handler::findById)
+                .andRoute(GET("/payment/acquisition/{cardNumber}"), handler::findByAcquisitionCardNumber)
                 .andRoute(POST("/payment"), handler::save);
     }
 }
