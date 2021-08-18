@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 
 @Component
 @Slf4j(topic = "PAYMENT_HANDLER")
@@ -59,8 +60,23 @@ public class PaymentHandler {
 
     public Mono<ServerResponse> save(ServerRequest request){
         Mono<Payment> payment = request.bodyToMono(Payment.class);
-        return payment.flatMap(paymentService::create)
-                .flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
+        Payment paymentDto = new Payment();
+        return payment.flatMap(paymentRequest -> {
+                    paymentDto.setDescription(paymentRequest.getDescription());
+                    paymentDto.setAmount(paymentRequest.getAmount());
+                    return acquisitionService.findByCardNumber(paymentRequest.getAcquisition().getCardNumber());
+                }).flatMap(acquisition -> {
+                    Double amountDebt = acquisition.getInitial() - acquisition.getDebt();
+                    if (paymentDto.getAmount() <  amountDebt){
+                        return Mono.error(new RuntimeException("el monto a pagar es superior a cantidad asiganda"));
+                    }
+                    Double cambio = paymentDto.getAmount() - (amountDebt);
+                    acquisition.setDebt(acquisition.getInitial());
+                    paymentDto.setAcquisition(acquisition);
+                    paymentDto.setPaymentDate(LocalDateTime.now());
+                    return paymentService.create(paymentDto);
+                    //falta actualizar la acquisicion
+                }).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(p));
     }

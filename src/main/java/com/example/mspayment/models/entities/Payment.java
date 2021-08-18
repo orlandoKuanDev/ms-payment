@@ -19,6 +19,9 @@ public class Payment {
     @Field(name = "amount")
     private Double amount;
 
+    @Field(name = "acquisition")
+    private Acquisition acquisition;
+
     @Field(name = "description")
     private String description;
 
