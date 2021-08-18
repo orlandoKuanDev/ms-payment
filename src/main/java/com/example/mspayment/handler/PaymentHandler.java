@@ -66,19 +66,19 @@ public class PaymentHandler {
                     paymentDto.setAmount(paymentRequest.getAmount());
                     return acquisitionService.findByCardNumber(paymentRequest.getAcquisition().getCardNumber());
                 }).flatMap(acquisition -> {
-                    Double amountDebt = acquisition.getInitial() - acquisition.getDebt();
-                    if (paymentDto.getAmount() <  amountDebt){
-                        return Mono.error(new RuntimeException("el monto a pagar es superior a cantidad asiganda"));
+                    // FALTA EVALUACION DE MULTIPLES CUENTAS ASOCIADAS A UNA TARJETA DE CREDITO.
+                    // PAGAR DESDE UNA SOLA CUENTA
+                    if (paymentDto.getAmount() <  acquisition.getBill().getBalance()){
+                        return Mono.error(new RuntimeException("The amount to pay is higher than my bill balance"));
                     }
-                    Double cambio = paymentDto.getAmount() - (amountDebt);
                     acquisition.setDebt(acquisition.getInitial());
+                    acquisition.getBill().setBalance(paymentDto.getAmount() - acquisition.getBill().getBalance());
                     paymentDto.setAcquisition(acquisition);
                     paymentDto.setPaymentDate(LocalDateTime.now());
                     return paymentService.create(paymentDto);
-                    //falta actualizar la acquisicion
-                }).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
+                }).flatMap(paymentSave -> acquisitionService.updateAcquisition(paymentSave.getAcquisition(), paymentSave.getAcquisition().getCardNumber())).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(paymentDto.getId())))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(p));
+                        .bodyValue(paymentDto));
     }
 
     public Mono<ServerResponse> update(ServerRequest request){

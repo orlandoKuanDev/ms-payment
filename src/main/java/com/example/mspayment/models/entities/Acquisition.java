@@ -18,4 +18,8 @@ public class Acquisition {
 
     @Field(name = "cardNumber")
     private String cardNumber;
+
+    @Field(name = "bill")
+    private Bill bill;
+
 }
