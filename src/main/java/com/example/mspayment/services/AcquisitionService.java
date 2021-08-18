@@ -49,7 +49,7 @@ public class AcquisitionService {
         return webClientBuilder
                 .baseUrl("http://SERVICE-ACQUISITION/acquisition")
                 .build()
-                .patch()
+                .put()
                 .uri("/update/{cardNumber}", cardNumber)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(Mono.just(acquisition), Acquisition.class)

@@ -50,7 +50,8 @@ public class PaymentHandler {
 
     public Mono<ServerResponse> updateAcquisition(ServerRequest request){
         Mono<Acquisition> acquisition = request.bodyToMono(Acquisition.class);
-        return acquisition.flatMap(acquisitionService::updateAcquisition).flatMap(p -> ServerResponse.ok()
+        String cardNumber = request.pathVariable("cardNumber");
+        return acquisition.flatMap(acquisition1 -> acquisitionService.updateAcquisition(acquisition1, cardNumber)).flatMap(p -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(p))
                 .switchIfEmpty(ServerResponse.notFound().build());
@@ -72,7 +73,7 @@ public class PaymentHandler {
            db.setAmount(req.getAmount());
            db.setDescription(req.getDescription());
            return db;
-        }).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
+        }).flatMap(paymentService::update).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(p));
     }

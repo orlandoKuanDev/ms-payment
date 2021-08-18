@@ -16,7 +16,8 @@ public class RouterConfig {
         return route(GET("/payment"), handler::findAll)
                 .andRoute(GET("/payment/{id}"), handler::findById)
                 .andRoute(GET("/payment/acquisition/{cardNumber}"), handler::findByAcquisitionCardNumber)
-                .andRoute(PATCH("/payment/update/{id}"), handler::update)
+                .andRoute(PUT("/payment/acquisition/update/{cardNumber}"), handler::updateAcquisition)
+                .andRoute(PUT("/payment/update/{id}"), handler::update)
                 .andRoute(POST("/payment"), handler::save);
     }
 }
