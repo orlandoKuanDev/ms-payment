@@ -1,5 +1,6 @@
 package com.example.mspayment.handler;
 
+import com.example.mspayment.models.entities.Acquisition;
 import com.example.mspayment.models.entities.Payment;
 import com.example.mspayment.services.AcquisitionService;
 import com.example.mspayment.services.IPaymentService;
@@ -47,11 +48,32 @@ public class PaymentHandler {
                         .switchIfEmpty(ServerResponse.notFound().build());
     }
 
+    public Mono<ServerResponse> updateAcquisition(ServerRequest request){
+        Mono<Acquisition> acquisition = request.bodyToMono(Acquisition.class);
+        return acquisition.flatMap(acquisitionService::updateAcquisition).flatMap(p -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(p))
+                .switchIfEmpty(ServerResponse.notFound().build());
+    }
+
     public Mono<ServerResponse> save(ServerRequest request){
         Mono<Payment> payment = request.bodyToMono(Payment.class);
         return payment.flatMap(paymentService::create)
                 .flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(p));
+    }
+
+    public Mono<ServerResponse> update(ServerRequest request){
+        Mono<Payment> payment = request.bodyToMono(Payment.class);
+        String id = request.pathVariable("id");
+        Mono<Payment> paymentDB = paymentService.findById(id);
+        return paymentDB.zipWith(payment, (db, req) -> {
+           db.setAmount(req.getAmount());
+           db.setDescription(req.getDescription());
+           return db;
+        }).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(p));
     }
 }
