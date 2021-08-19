@@ -30,12 +30,12 @@ public class AcquisitionService {
         this.webClientBuilder = webClientBuilder;
     }
 
-    public Mono<Acquisition> findByCardNumber(String cardNumber) {
+    public Mono<Acquisition> findByIban(String iban) {
         return webClientBuilder
                 .baseUrl("http://SERVICE-ACQUISITION/acquisition")
                 .build()
                 .get()
-                .uri("/card/{cardNumber}", Collections.singletonMap("cardNumber", cardNumber))
+                .uri("/card/{iban}", Collections.singletonMap("iban", iban))
                 .accept(APPLICATION_JSON)
                 .retrieve()
                 .onStatus(HttpStatus::isError, response -> {
@@ -45,12 +45,12 @@ public class AcquisitionService {
                 .bodyToMono(Acquisition.class);
     }
 
-    public Mono<Acquisition> updateAcquisition(Acquisition acquisition, String cardNumber){
+    public Mono<Acquisition> updateAcquisition(Acquisition acquisition, String iban){
         return webClientBuilder
                 .baseUrl("http://SERVICE-ACQUISITION/acquisition")
                 .build()
                 .put()
-                .uri("/update/{cardNumber}", cardNumber)
+                .uri("/update/{iban}", iban)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(Mono.just(acquisition), Acquisition.class)
                 .retrieve()

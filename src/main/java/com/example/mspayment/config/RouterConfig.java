@@ -15,8 +15,8 @@ public class RouterConfig {
     public RouterFunction<ServerResponse> rutas(PaymentHandler handler){
         return route(GET("/payment"), handler::findAll)
                 .andRoute(GET("/payment/{id}"), handler::findById)
-                .andRoute(GET("/payment/acquisition/{cardNumber}"), handler::findByAcquisitionCardNumber)
-                .andRoute(PUT("/payment/acquisition/update/{cardNumber}"), handler::updateAcquisition)
+                .andRoute(GET("/payment/acquisition/{iban}"), handler::findByAcquisitionIban)
+                .andRoute(PUT("/payment/acquisition/update/{iban}"), handler::updateAcquisition)
                 .andRoute(PUT("/payment/update/{id}"), handler::update)
                 .andRoute(POST("/payment"), handler::save);
     }

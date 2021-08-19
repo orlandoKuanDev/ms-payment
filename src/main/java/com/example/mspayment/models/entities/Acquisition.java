@@ -16,8 +16,8 @@ public class Acquisition {
     @Field(name = "debt")
     private double debt;
 
-    @Field(name = "cardNumber")
-    private String cardNumber;
+    @Field(name = "iban")
+    private String iban;
 
     @Field(name = "bill")
     private Bill bill;

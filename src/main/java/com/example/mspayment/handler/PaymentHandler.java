@@ -41,9 +41,9 @@ public class PaymentHandler {
                 .switchIfEmpty(Mono.error(new RuntimeException("Payment no found")));
     }
 
-    public Mono<ServerResponse> findByAcquisitionCardNumber(ServerRequest request){
-        String cardNumber = request.pathVariable("cardNumber");
-        return acquisitionService.findByCardNumber(cardNumber).flatMap(p -> ServerResponse.ok()
+    public Mono<ServerResponse> findByAcquisitionIban(ServerRequest request){
+        String iban = request.pathVariable("iban");
+        return acquisitionService.findByIban(iban).flatMap(p -> ServerResponse.ok()
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(p))
                         .switchIfEmpty(ServerResponse.notFound().build());
@@ -51,8 +51,8 @@ public class PaymentHandler {
 
     public Mono<ServerResponse> updateAcquisition(ServerRequest request){
         Mono<Acquisition> acquisition = request.bodyToMono(Acquisition.class);
-        String cardNumber = request.pathVariable("cardNumber");
-        return acquisition.flatMap(acquisition1 -> acquisitionService.updateAcquisition(acquisition1, cardNumber)).flatMap(p -> ServerResponse.ok()
+        String iban = request.pathVariable("iban");
+        return acquisition.flatMap(acquisition1 -> acquisitionService.updateAcquisition(acquisition1, iban)).flatMap(p -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(p))
                 .switchIfEmpty(ServerResponse.notFound().build());
@@ -64,7 +64,7 @@ public class PaymentHandler {
         return payment.flatMap(paymentRequest -> {
                     paymentDto.setDescription(paymentRequest.getDescription());
                     paymentDto.setAmount(paymentRequest.getAmount());
-                    return acquisitionService.findByCardNumber(paymentRequest.getAcquisition().getCardNumber());
+                    return acquisitionService.findByIban(paymentRequest.getAcquisition().getIban());
                 }).flatMap(acquisition -> {
                     // FALTA EVALUACION DE MULTIPLES CUENTAS ASOCIADAS A UNA TARJETA DE CREDITO.
                     // PAGAR DESDE UNA SOLA CUENTA
@@ -76,7 +76,7 @@ public class PaymentHandler {
                     paymentDto.setAcquisition(acquisition);
                     paymentDto.setPaymentDate(LocalDateTime.now());
                     return paymentService.create(paymentDto);
-                }).flatMap(paymentSave -> acquisitionService.updateAcquisition(paymentSave.getAcquisition(), paymentSave.getAcquisition().getCardNumber())).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(paymentDto.getId())))
+                }).flatMap(paymentSave -> acquisitionService.updateAcquisition(paymentSave.getAcquisition(), paymentSave.getAcquisition().getIban())).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(paymentDto.getId())))
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(paymentDto));
     }
