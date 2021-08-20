@@ -6,14 +6,17 @@ import com.example.mspayment.services.AcquisitionService;
 import com.example.mspayment.services.IPaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Component
 @Slf4j(topic = "PAYMENT_HANDLER")
@@ -60,23 +63,36 @@ public class PaymentHandler {
 
     public Mono<ServerResponse> save(ServerRequest request){
         Mono<Payment> payment = request.bodyToMono(Payment.class);
+        return payment.flatMap(paymentService::create)
+                .flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(p))
+                .onErrorResume(error -> Mono.error(new RuntimeException(error.getMessage())));
+    }
+
+    public Mono<ServerResponse> makePayment(ServerRequest request){
+        Mono<Payment> payment = request.bodyToMono(Payment.class);
         Payment paymentDto = new Payment();
+
         return payment.flatMap(paymentRequest -> {
                     paymentDto.setDescription(paymentRequest.getDescription());
                     paymentDto.setAmount(paymentRequest.getAmount());
-                    return acquisitionService.findByIban(paymentRequest.getAcquisition().getIban());
-                }).flatMap(acquisition -> {
+                    return acquisitionService.findByBillAccountNumber(paymentRequest.getAcquisition().getBill().getAccountNumber());
+                }) .checkpoint("after consultation acquisition service web-client by account number")
+                .flatMap(acquisition -> {
                     // FALTA EVALUACION DE MULTIPLES CUENTAS ASOCIADAS A UNA TARJETA DE CREDITO.
                     // PAGAR DESDE UNA SOLA CUENTA
-                    if (paymentDto.getAmount() <  acquisition.getBill().getBalance()){
-                        return Mono.error(new RuntimeException("The amount to pay is higher than my bill balance"));
+                    if (Objects.equals(acquisition.getBill().getBalance(), paymentDto.getCreditLine())){
+                        //return Mono.error(new RuntimeException("you are up to date on your payments"));
+                        return ServerResponse.created(URI.create("/payment/".concat(paymentDto.getId())))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue("you are up to date on your payments");
                     }
-                    acquisition.setDebt(acquisition.getInitial());
                     acquisition.getBill().setBalance(paymentDto.getAmount() - acquisition.getBill().getBalance());
                     paymentDto.setAcquisition(acquisition);
                     paymentDto.setPaymentDate(LocalDateTime.now());
                     return paymentService.create(paymentDto);
-                }).flatMap(paymentSave -> acquisitionService.updateAcquisition(paymentSave.getAcquisition(), paymentSave.getAcquisition().getIban())).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(paymentDto.getId())))
+                }).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(paymentDto.getId())))
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(paymentDto));
     }

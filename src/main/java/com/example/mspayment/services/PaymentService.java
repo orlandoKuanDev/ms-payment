@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class PaymentService extends BaseService<Payment, String> implements IPaymentService{
-    private final IPaymentRepository paymentRepository;
+   private final IPaymentRepository paymentRepository;
 
     @Autowired
     public PaymentService(IPaymentRepository paymentRepository) {

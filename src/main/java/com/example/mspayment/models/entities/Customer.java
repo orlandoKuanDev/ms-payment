@@ -9,12 +9,9 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-//@Document(collection = "customer")
 @Data
 public class Customer {
-    //@Id
-    //private String id;
-    @NotBlank
+
     @Field(name = "customerIdentityType")
     private String customerIdentityType;
     @Field(name = "customerIdentityNumber")

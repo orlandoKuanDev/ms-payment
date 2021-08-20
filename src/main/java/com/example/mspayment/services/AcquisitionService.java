@@ -24,10 +24,25 @@ public class AcquisitionService {
     private final WebClient.Builder webClientBuilder;
 
     Logger logger = LoggerFactory.getLogger(AcquisitionService.class);
-    @Autowired
 
+    @Autowired
     public AcquisitionService(WebClient.Builder webClientBuilder) {
         this.webClientBuilder = webClientBuilder;
+    }
+
+    public Mono<Acquisition> findByBillAccountNumber(String accountNumber) {
+        return webClientBuilder
+                .baseUrl("http://SERVICE-ACQUISITION/acquisition")
+                .build()
+                .get()
+                .uri("/bill/{accountNumber}", Collections.singletonMap("accountNumber", accountNumber))
+                .accept(APPLICATION_JSON)
+                .retrieve()
+                .onStatus(HttpStatus::isError, response -> {
+                    logTraceResponse(logger, response);
+                    return Mono.error(new RuntimeException("THE ACQUISITION FIND FAILED"));
+                })
+                .bodyToMono(Acquisition.class);
     }
 
     public Mono<Acquisition> findByIban(String iban) {
