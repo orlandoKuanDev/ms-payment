@@ -5,6 +5,7 @@ import com.example.mspayment.repositories.IPaymentRepository;
 import com.example.mspayment.repositories.IRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 @Service
 public class PaymentService extends BaseService<Payment, String> implements IPaymentService{
@@ -18,5 +19,10 @@ public class PaymentService extends BaseService<Payment, String> implements IPay
     @Override
     protected IRepository<Payment, String> getRepository() {
         return paymentRepository;
+    }
+
+    @Override
+    public Mono<Payment> findByAcquisition_Iban(String iban) {
+        return paymentRepository.findByAcquisition_Iban(iban);
     }
 }

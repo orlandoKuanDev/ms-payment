@@ -28,12 +28,9 @@ public class Payment {
     @Field(name = "creditLine")
     private Double creditLine;
 
-    @Field(name = "haveDebt")
-    private Boolean haveDebt;
-
     @Field(name = "expirationDate")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime expirationDate = LocalDateTime.now();
+    private LocalDateTime expirationDate;
 
     @Field(name = "paymentDate")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")

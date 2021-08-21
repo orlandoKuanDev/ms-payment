@@ -52,6 +52,14 @@ public class PaymentHandler {
                         .switchIfEmpty(ServerResponse.notFound().build());
     }
 
+    public Mono<ServerResponse> findPaymentByIban(ServerRequest request){
+        String iban = request.pathVariable("iban");
+        return paymentService.findByAcquisition_Iban(iban).flatMap(p -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(p))
+                .switchIfEmpty(ServerResponse.notFound().build());
+    }
+
     public Mono<ServerResponse> updateAcquisition(ServerRequest request){
         Mono<Acquisition> acquisition = request.bodyToMono(Acquisition.class);
         String iban = request.pathVariable("iban");
@@ -99,14 +107,16 @@ public class PaymentHandler {
 
     public Mono<ServerResponse> update(ServerRequest request){
         Mono<Payment> payment = request.bodyToMono(Payment.class);
-        String id = request.pathVariable("id");
-        Mono<Payment> paymentDB = paymentService.findById(id);
-        return paymentDB.zipWith(payment, (db, req) -> {
-           db.setAmount(req.getAmount());
-           db.setDescription(req.getDescription());
-           return db;
-        }).flatMap(paymentService::update).flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
+
+        return payment.zipWhen(paymentRequest -> paymentService.findByAcquisition_Iban(paymentRequest.getAcquisition().getIban()))
+                .flatMap(paymentDB -> {
+                    paymentDB.getT2().setAmount(paymentDB.getT1().getAmount());
+                    return paymentService.update(paymentDB.getT2());
+                })
+                .checkpoint("after update payment", true)
+                .flatMap(p -> ServerResponse.created(URI.create("/payment/".concat(p.getId())))
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(p));
+                .bodyValue(p))
+                .onErrorResume(throwable -> Mono.error(new RuntimeException("update payment failed")));
     }
 }
