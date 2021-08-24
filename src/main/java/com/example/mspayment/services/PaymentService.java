@@ -25,4 +25,9 @@ public class PaymentService extends BaseService<Payment, String> implements IPay
     public Mono<Payment> findByAcquisition_Iban(String iban) {
         return paymentRepository.findByAcquisition_Iban(iban);
     }
+
+    @Override
+    public Mono<Void> deleteByAcquisition_Iban(String iban) {
+        return paymentRepository.deleteByAcquisition_Iban(iban);
+    }
 }

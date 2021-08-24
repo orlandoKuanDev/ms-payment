@@ -28,6 +28,9 @@ public class Payment {
     @Field(name = "creditLine")
     private Double creditLine;
 
+    @Field(name = "status")
+    private String status;
+
     @Field(name = "expirationDate")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime expirationDate;
