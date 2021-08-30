@@ -9,7 +9,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class Bill {
     @Field(name = "accountNumber")
     private String accountNumber;
-
     @Field(name = "balance")
     private Double balance;
+    @Field(name = "acquisition")
+    private Acquisition acquisition;
 }

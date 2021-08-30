@@ -29,6 +29,7 @@ public class DebitService {
     }
 
     public Mono<Debit> findByCardNumber(String cardNumber) {
+        logger.info("card_number. {}", cardNumber);
         return webClientBuilder
                 .baseUrl("http://SERVICE-DEBIT/debit")
                 .build()
@@ -40,6 +41,24 @@ public class DebitService {
                     logTraceResponse(logger, response);
                     return Mono.error(new RuntimeException(
                             String.format("THE CARD NUMBER DONT EXIST IN MICRO SERVICE DEBIT -> %s", cardNumber)
+                    ));
+                })
+                .bodyToMono(Debit.class);
+    }
+
+    public Mono<Debit> findByAccountNumber(String accountNumber) {
+        logger.info("acc_number,  {}", accountNumber);
+        return webClientBuilder
+                .baseUrl("http://SERVICE-DEBIT/debit")
+                .build()
+                .get()
+                .uri("/account/{accountNumber}", Collections.singletonMap("accountNumber", accountNumber))
+                .accept(APPLICATION_JSON)
+                .retrieve()
+                .onStatus(HttpStatus::isError, response -> {
+                    logTraceResponse(logger, response);
+                    return Mono.error(new RuntimeException(
+                            String.format("THE ACCOUNT NUMBER DONT EXIST IN MICRO SERVICE DEBIT -> %s", accountNumber)
                     ));
                 })
                 .bodyToMono(Debit.class);

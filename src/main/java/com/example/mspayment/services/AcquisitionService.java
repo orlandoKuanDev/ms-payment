@@ -60,12 +60,13 @@ public class AcquisitionService {
                 .bodyToMono(Acquisition.class);
     }
 
-    public Mono<Acquisition> updateAcquisition(Acquisition acquisition, String iban){
+    public Mono<Acquisition> updateAcquisition(Acquisition acquisition){
+        logger.info("TRANSACTION_WEBCLIENT_UPDATE {}", acquisition);
         return webClientBuilder
                 .baseUrl("http://SERVICE-ACQUISITION/acquisition")
                 .build()
-                .put()
-                .uri("/update/{iban}", iban)
+                .post()
+                .uri("/update")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(Mono.just(acquisition), Acquisition.class)
                 .retrieve()

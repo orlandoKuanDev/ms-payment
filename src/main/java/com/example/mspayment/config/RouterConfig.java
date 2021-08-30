@@ -17,8 +17,9 @@ public class RouterConfig {
                 .andRoute(GET("/payment/{id}"), handler::findById)
                 .andRoute(GET("/payment/acquisition/{iban}"), handler::findByAcquisitionIban)
                 .andRoute(GET("/payment/iban/{iban}"), handler::findPaymentByIban)
+                .andRoute(GET("/payment/card/{creditCard}"), handler::findCreditCard)
                 .andRoute(PUT("/payment/acquisition/update/{iban}"), handler::updateAcquisition)
-                .andRoute(POST("/payment/card"), handler::makePaymentWithCardNumber)
+                .andRoute(POST("/payment/card"), handler::makePaymentAccountNumber)
                 .andRoute(POST("/payment/update"), handler::update)
                 .andRoute(PUT("/payment/update/{iban}"), handler::update)
                 .andRoute(POST("/payment/save"), handler::save);
