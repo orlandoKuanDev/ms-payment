@@ -61,7 +61,14 @@ public class PaymentHandler {
                                 .bodyValue(p))
                         .switchIfEmpty(ServerResponse.notFound().build());
     }
-
+    public Mono<ServerResponse> findBillByAccountNumber(ServerRequest request){
+        String accountNumber = request.pathVariable("accountNumber");
+        return billService.findByAccountNumber(accountNumber)
+                .flatMap(p -> ServerResponse.ok()
+                        .contentType(APPLICATION_JSON)
+                        .bodyValue(p))
+                .switchIfEmpty(ServerResponse.notFound().build());
+    }
     public Mono<ServerResponse> findPaymentByIban(ServerRequest request){
         String iban = request.pathVariable("iban");
         return paymentService.findByAcquisition_Iban(iban).flatMap(p -> ServerResponse.ok()
@@ -114,12 +121,98 @@ public class PaymentHandler {
                     transaction.setBill(bill);
                     return transactionService.createTransaction(transaction);
                 })
-                .zipWhen(data -> paymentService.findByAcquisition_Bill_AccountNumber(data.getT1().getT1().getAccountNumber()))
-                .zipWhen(res -> {
-                    res.getT1().getT1().getT2().setBalance(res.getT2().getAcquisition().getBill().getBalance());
-                    return billService.updateBill(res.getT1().getT1().getT2());
+                .checkpoint("after debit update")
+                .flatMap(payment -> {
+                    String creditCard = payment.getT1().getT1().getCreditCard();
+                    if (Objects.equals(creditCard, "")) {
+                        return Mono.error(() -> new RuntimeException("the credit card is invalid"));
+                    }
+                    return paymentService.findByAcquisition_CardNumber(creditCard);
                 })
-                .flatMap(response -> Mono.just(response.getT1().getT2()));
+                .zipWhen(data -> billService.findByAccountNumber(data.getAcquisition().getBill().getAccountNumber()))
+                .zipWhen(bill -> {
+                    Bill billUpdate = bill.getT2();
+                    billUpdate.setBalance(bill.getT1().getCreditLine());
+                    return billService.updateBill(billUpdate);
+                })
+                .zipWhen(updateAcq -> {
+                    Acquisition acquisition = updateAcq.getT1().getT1().getAcquisition();
+                    acquisition.setBill(updateAcq.getT2());
+                    return acquisitionService.updateAcquisition(acquisition);
+                })
+                .flatMap(response -> {
+                    Payment payment = response.getT1().getT1().getT1();
+                    Acquisition acquisition = response.getT2();
+                    payment.setAmount(0.0);
+                    payment.setAcquisition(acquisition);
+                    payment.setExpirationDate(LocalDateTime.now().plusDays(30));
+                    return paymentService.update(payment);
+                });
+    }
+    private Mono<Payment> createPaymentWithCardNotPrincipal(Mono<Tuple2<CreatePaymentWithAccountDTO, Debit>> tuple){
+        return tuple
+                .zipWhen(data -> debitService.findByCardNumber(data.getT2().getCardNumber()))
+                .zipWhen(result -> {
+                    Transaction transaction = new Transaction();
+                    transaction.setTransactionType("PAGO");
+                    transaction.setTransactionAmount(result.getT1().getT1().getAmount());
+                    transaction.setDescription(result.getT1().getT1().getDescription());
+
+                    if (result.getT1().getT1().getAmount() > result.getT2().getPrincipal().getBill().getBalance()) {
+                       return Mono.error(() -> new RuntimeException("The retire amount exceeds the available balance in your account"));
+                    } else {
+                        List<Acquisition> acquisitions = result.getT2().getAssociations();
+                        Acquisition acquisition = acquisitions.stream().filter(acq -> Objects.equals(acq.getBill().getAccountNumber(), result.getT1().getT1().getAccountNumber())).findFirst().orElse(null);
+                        if (acquisition == null) {
+                            return Mono.error(() -> new RuntimeException("The account number does not exist"));
+                        }
+                        Bill bill = acquisition.getBill();
+                        bill.setBalance(bill.getBalance() - result.getT1().getT1().getAmount());
+                        transaction.setBill(bill);
+                    }
+                    return transactionService.createTransaction(transaction);
+                })
+                .zipWhen(updateDebit -> {
+                    //update list
+                    List<Acquisition> acquisitions = updateDebit.getT1().getT2().getAssociations().stream().peek(rx -> {
+                        if (Objects.equals(rx.getBill().getAccountNumber(), updateDebit.getT2().getBill().getAccountNumber())) {
+                            rx.setBill(updateDebit.getT2().getBill());
+                        }
+                    }).collect(Collectors.toList());
+                    //validate is principal
+                    Debit debit = new Debit();
+                    debit.setAssociations(acquisitions);
+                    debit.setPrincipal(updateDebit.getT1().getT2().getPrincipal());
+                    debit.setCardNumber(updateDebit.getT1().getT2().getCardNumber());
+                    return debitService.updateDebit(debit);
+                })
+                .checkpoint("after debit update")
+                .flatMap(payment -> {
+                    String creditCard = payment.getT1().getT1().getT1().getT1().getCreditCard();
+                    if (Objects.equals(creditCard, "")) {
+                        return Mono.error(() -> new RuntimeException("the credit card is invalid"));
+                    }
+                    return paymentService.findByAcquisition_CardNumber(creditCard);
+                })
+                .zipWhen(data -> billService.findByAccountNumber(data.getAcquisition().getBill().getAccountNumber()))
+                .zipWhen(bill -> {
+                    Bill billUpdate = bill.getT2();
+                    billUpdate.setBalance(bill.getT1().getCreditLine());
+                    return billService.updateBill(billUpdate);
+                })
+                .zipWhen(updateAcq -> {
+                    Acquisition acquisition = updateAcq.getT1().getT1().getAcquisition();
+                    acquisition.setBill(updateAcq.getT2());
+                    return acquisitionService.updateAcquisition(acquisition);
+                })
+                .flatMap(response -> {
+                    Payment payment = response.getT1().getT1().getT1();
+                    Acquisition acquisition = response.getT2();
+                    payment.setAmount(0.0);
+                    payment.setAcquisition(acquisition);
+                    payment.setExpirationDate(LocalDateTime.now().plusDays(30));
+                    return paymentService.update(payment);
+                });
 
     }
 
@@ -175,23 +268,28 @@ public class PaymentHandler {
                 .zipWhen(bill -> {
                     Bill billUpdate = bill.getT2();
                     billUpdate.setBalance(bill.getT1().getCreditLine());
-                    billUpdate.setAcquisition(billUpdate.getAcquisition());
+                    //billUpdate.setAcquisition(billUpdate.getAcquisition());
                     return billService.updateBill(billUpdate);
                 })
-                .zipWhen(updateAcq -> acquisitionService.updateAcquisition(updateAcq.getT2().getAcquisition()))
+                .zipWhen(updateAcq -> {
+                    Acquisition acquisition = updateAcq.getT1().getT1().getAcquisition();
+                    acquisition.setBill(updateAcq.getT2());
+                    log.info("ACQUSITION_DATA, {}", acquisition);
+                    return acquisitionService.updateAcquisition(acquisition);
+                })
                 .flatMap(response -> {
                     Payment payment = response.getT1().getT1().getT1();
-                    //Bill bill = response.getT1().getT2();
                     Acquisition acquisition = response.getT2();
-                    acquisition.setBill(response.getT1().getT2());
                     payment.setAmount(0.0);
                     payment.setAcquisition(acquisition);
                     payment.setExpirationDate(LocalDateTime.now().plusDays(30));
                     return paymentService.update(payment);
                 });
     }
+
     public Mono<ServerResponse> makePaymentAccountNumber(ServerRequest request) {
         Mono<CreatePaymentWithAccountDTO> paymentCreateDTOMono = request.bodyToMono(CreatePaymentWithAccountDTO.class);
+
         return paymentCreateDTOMono
                 .zipWhen(paymentRequest -> debitService.findByAccountNumber(paymentRequest.getAccountNumber())
                         .switchIfEmpty(Mono.defer(() -> {
